@@ -47,4 +47,15 @@ public class InventoryController {
                 .version(inv.getVersion())
                 .build());
     }
+
+    @GetMapping
+    public ResponseEntity<java.util.List<InventoryResponse>> listInventory() {
+        java.util.List<Inventory> all = inventoryService.listInventory();
+        java.util.List<InventoryResponse> resp = all.stream().map(inv -> InventoryResponse.builder()
+                .productId(inv.getProductId())
+                .availableQuantity(inv.getAvailableQuantity())
+                .version(inv.getVersion())
+                .build()).toList();
+        return ResponseEntity.ok(resp);
+    }
 }
