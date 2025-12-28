@@ -5,13 +5,14 @@ import com.claire.oms.dto.InventoryRequest;
 import com.claire.oms.dto.InventoryResponse;
 import com.claire.oms.entity.Inventory;
 import com.claire.oms.service.InventoryService;
+import com.claire.oms.utility.Constants;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/inventory")
+@RequestMapping(Constants.API_INVENTORY)
 public class InventoryController {
 
     @Autowired

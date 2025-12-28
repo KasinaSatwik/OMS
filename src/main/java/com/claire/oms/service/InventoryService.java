@@ -59,8 +59,8 @@ public class InventoryService {
                 if (inv == null || inv.getAvailableQuantity() < it.getQuantity()) {
                     order.setStatus(Order.Status.FAILED);
                     orderRepository.save(order);
-                    dlq.save(createDlq(ev, "insufficient stock for " + it.getProductId()));
-                    publisher.publishEvent(OrderFailedEvent.builder().orderId(order.getId()).reason("insufficient stock").build());
+                    dlq.save(createDlq(ev, com.claire.oms.utility.Constants.MSG_INSUFFICIENT_STOCK_FOR + it.getProductId()));
+                    publisher.publishEvent(OrderFailedEvent.builder().orderId(order.getId()).reason(com.claire.oms.utility.Constants.MSG_INSUFFICIENT_STOCK).build());
                     return;
                 }
                 inv.setAvailableQuantity(inv.getAvailableQuantity() - it.getQuantity());
@@ -120,7 +120,7 @@ public class InventoryService {
         Inventory inv = inventoryRepository.findById(productId).orElse(new Inventory(productId, 0));
         int newQty = inv.getAvailableQuantity() + delta;
         if (newQty < 0) {
-            throw new IllegalArgumentException("Resulting quantity cannot be negative");
+            throw new IllegalArgumentException(com.claire.oms.utility.Constants.EXC_RESULT_NEG);
         }
         inv.setAvailableQuantity(newQty);
         Inventory saved = inventoryRepository.save(inv);
@@ -130,7 +130,7 @@ public class InventoryService {
 
     @Transactional
     public Inventory setInventoryQuantity(String productId, int quantity) {
-        if (quantity < 0) throw new IllegalArgumentException("Quantity cannot be negative");
+        if (quantity < 0) throw new IllegalArgumentException(com.claire.oms.utility.Constants.EXC_QUANTITY_NEG);
         return createOrSetInventory(productId, quantity);
     }
 }

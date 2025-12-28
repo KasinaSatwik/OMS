@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.claire.oms.utility.Constants;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -40,20 +41,20 @@ public class OrderService {
         .map(it -> ItemDto.builder().productId(it.getProductId()).quantity(it.getQuantity()).build())
         .collect(Collectors.toList());
     publisher.publishEvent(OrderCreatedEvent.builder().orderId(saved.getId()).items(evItems).build());
-        return "ORD-" + saved.getId();
+        return Constants.ORDER_PREFIX + saved.getId();
     }
 
     @Transactional
     public String cancelOrder(String orderIdStr) {
         Long id = parseOrderId(orderIdStr);
-        Order o = orderRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("order not found"));
+        Order o = orderRepository.findById(id).orElseThrow(() -> new IllegalArgumentException(Constants.ORDER_NOT_FOUND));
         if (o.getStatus() == Order.Status.CONFIRMED) {
-            throw new IllegalStateException("Cannot cancel after confirmation");
+            throw new IllegalStateException(Constants.ORDER_CANNOT_CANCEL_AFTER_CONFIRM);
         }
         o.setStatus(Order.Status.CANCELLED);
         orderRepository.save(o);
         publisher.publishEvent(OrderCancelledEvent.builder().orderId(o.getId()).build());
-        return "ORD-" + o.getId();
+        return Constants.ORDER_PREFIX + o.getId();
     }
 
     @Transactional(readOnly = true)
@@ -62,8 +63,8 @@ public class OrderService {
     }
 
     private Long parseOrderId(String orderIdStr) {
-        if (orderIdStr == null) throw new IllegalArgumentException("invalid id");
-        if (orderIdStr.startsWith("ORD-")) orderIdStr = orderIdStr.substring(4);
+        if (orderIdStr == null) throw new IllegalArgumentException(Constants.ORDER_INVALID_ID);
+        if (orderIdStr.startsWith(Constants.ORDER_PREFIX)) orderIdStr = orderIdStr.substring(Constants.ORDER_PREFIX.length());
         return Long.parseLong(orderIdStr);
     }
 }
