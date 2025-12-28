@@ -16,7 +16,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.context.event.EventListener;
+import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.claire.oms.utility.Constants;
@@ -43,9 +44,9 @@ public class InventoryService {
     private ApplicationEventPublisher publisher;
 
     @Async("taskExecutor")
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Retryable(maxAttempts = 3, backoff = @Backoff(delay = 200))
-    @Transactional
+    @org.springframework.transaction.annotation.Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void handleOrderCreated(OrderCreatedEvent ev) {
         Order order = orderRepository.findById(ev.getOrderId()).orElse(null);
         if (order == null) return;
@@ -64,7 +65,7 @@ public class InventoryService {
                 inv.setAvailableQuantity(inv.getAvailableQuantity() - it.getQuantity());
                 inventoryRepository.save(inv); 
             }
-            
+            log.info("All items reserved for order {}", order.getId());
             order.setStatus(Order.Status.CONFIRMED);
             orderRepository.save(order);
             publisher.publishEvent(OrderConfirmedEvent.builder().orderId(order.getId()).build());
@@ -78,8 +79,8 @@ public class InventoryService {
     }
 
     @Async("taskExecutor")
-    @EventListener
-    @Transactional
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @org.springframework.transaction.annotation.Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void handleOrderCancelled(OrderCancelledEvent ev) {
         Order order = orderRepository.findById(ev.getOrderId()).orElse(null);
         if (order == null) return;
@@ -128,5 +129,10 @@ public class InventoryService {
     public Inventory setInventoryQuantity(String productId, int quantity) {
         if (quantity < 0) throw new IllegalArgumentException(Constants.EXC_QUANTITY_NEG);
         return createOrSetInventory(productId, quantity);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<Inventory> listInventory() {
+        return inventoryRepository.findAll();
     }
 }

@@ -26,7 +26,7 @@ public class OrderService {
     private ApplicationEventPublisher publisher;
 
     @Transactional
-    public String createOrder(CreateOrderRequest req) {
+    public Order createOrder(CreateOrderRequest req) {
         Order o = new Order();
         o.setCustomerId(req.getCustomerId());
         o.setStatus(Order.Status.CREATED);
@@ -40,11 +40,11 @@ public class OrderService {
         .map(it -> ItemDto.builder().productId(it.getProductId()).quantity(it.getQuantity()).build())
         .collect(Collectors.toList());
     publisher.publishEvent(OrderCreatedEvent.builder().orderId(saved.getId()).items(evItems).build());
-        return Constants.ORDER_PREFIX + saved.getId();
+        return saved;
     }
 
     @Transactional
-    public String cancelOrder(String orderIdStr) {
+    public Order cancelOrder(String orderIdStr) {
         Long id = parseOrderId(orderIdStr);
         Order o = orderRepository.findById(id).orElseThrow(() -> new IllegalArgumentException(Constants.ORDER_NOT_FOUND));
         if (o.getStatus() == Order.Status.CONFIRMED) {
@@ -53,12 +53,17 @@ public class OrderService {
         o.setStatus(Order.Status.CANCELLED);
         orderRepository.save(o);
         publisher.publishEvent(OrderCancelledEvent.builder().orderId(o.getId()).build());
-        return Constants.ORDER_PREFIX + o.getId();
+        return o;
     }
 
     @Transactional(readOnly = true)
     public Order getOrder(Long id) {
         return orderRepository.findById(id).orElse(null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Order> listOrders() {
+        return orderRepository.findAll();
     }
 
     private Long parseOrderId(String orderIdStr) {

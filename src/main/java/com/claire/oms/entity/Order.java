@@ -32,7 +32,6 @@ public class Order {
         createdAt = LocalDateTime.now();
     }
 
-    // getters/setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getCustomerId() { return customerId; }

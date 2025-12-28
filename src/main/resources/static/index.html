@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>OMS UI</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <h1>Order Management UI</h1>
+    <nav>
+      <button id="tab-orders" class="tab active">Orders</button>
+      <button id="tab-inventory" class="tab">Inventory</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="orders-section" class="pane">
+      <h2>Create Order</h2>
+      <label>Customer ID: <input id="customerId" value="cust-1"></label>
+      <div id="items-container">
+        <div class="item-row">
+          <input class="productId" placeholder="product-id" value="p1">
+          <input class="quantity" type="number" placeholder="qty" value="1" min="1">
+          <button class="remove-item">Remove</button>
+        </div>
+      </div>
+      <button id="add-item">Add Item</button>
+      <button id="create-order">Create Order</button>
+
+      <h3>Order Response</h3>
+      <pre id="create-order-response" class="output"></pre>
+
+  <hr>
+  <h2>Orders List</h2>
+  <button id="refresh-orders">Refresh Orders</button>
+  <div id="orders-list" class="output"></div>
+
+      <hr>
+      <h2>Get Order Status</h2>
+      <label>Order ID: <input id="get-order-id" placeholder="ORD-1"></label>
+      <button id="get-order">Get</button>
+      <pre id="get-order-response" class="output"></pre>
+
+      <hr>
+      <h2>Cancel Order</h2>
+      <label>Order ID: <input id="cancel-order-id" placeholder="ORD-1"></label>
+      <button id="cancel-order">Cancel</button>
+      <pre id="cancel-order-response" class="output"></pre>
+    </section>
+
+    <section id="inventory-section" class="pane hidden">
+      <h2>Inventory</h2>
+    
+      <label>Product ID: <input id="inv-productId" placeholder="p1"></label>
+      <label>Quantity: <input id="inv-quantity" type="number" value="10"></label>
+      <div>
+        <button id="inv-create">Create/Set (POST)</button>
+        <button id="inv-set">Set (PUT)</button>
+        <button id="inv-adjust">Adjust (PATCH)</button>
+      </div>
+      <h3>Inventory Response</h3>
+      <pre id="inv-response" class="output"></pre>
+
+      <hr>
+      <h2>Inventory List</h2>
+      <button id="refresh-inventory">Refresh Inventory</button>
+      <div id="inventory-list" class="output"></div>
+    </section>
+  </main>
+
+  <!-- Toast / popup container (moved outside panes so toasts are visible on any tab) -->
+  <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <footer>
+    <small>Built-in SPA served by Spring Boot static resources</small>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>
