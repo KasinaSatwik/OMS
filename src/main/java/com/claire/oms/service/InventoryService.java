@@ -22,9 +22,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.OptimisticLockException;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class InventoryService {
+
+    private static final Logger log = LoggerFactory.getLogger(InventoryService.class);
 
     @Autowired
     private InventoryRepository inventoryRepository;
@@ -99,5 +103,34 @@ public class InventoryService {
         d.setErrorMessage(error);
         d.setRetryCount(0);
         return d;
+    }
+
+    // --- Inventory management APIs (used by controller) ---
+    @Transactional
+    public Inventory createOrSetInventory(String productId, int quantity) {
+        Inventory inv = inventoryRepository.findById(productId).orElse(new Inventory(productId, 0));
+        inv.setAvailableQuantity(quantity);
+        Inventory saved = inventoryRepository.save(inv);
+        log.info("Set inventory {} = {}", productId, quantity);
+        return saved;
+    }
+
+    @Transactional
+    public Inventory adjustInventory(String productId, int delta) {
+        Inventory inv = inventoryRepository.findById(productId).orElse(new Inventory(productId, 0));
+        int newQty = inv.getAvailableQuantity() + delta;
+        if (newQty < 0) {
+            throw new IllegalArgumentException("Resulting quantity cannot be negative");
+        }
+        inv.setAvailableQuantity(newQty);
+        Inventory saved = inventoryRepository.save(inv);
+        log.info("Adjusted inventory {} by {} -> {}", productId, delta, newQty);
+        return saved;
+    }
+
+    @Transactional
+    public Inventory setInventoryQuantity(String productId, int quantity) {
+        if (quantity < 0) throw new IllegalArgumentException("Quantity cannot be negative");
+        return createOrSetInventory(productId, quantity);
     }
 }
