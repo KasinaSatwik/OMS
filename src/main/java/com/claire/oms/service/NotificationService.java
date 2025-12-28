@@ -16,7 +16,6 @@ public class NotificationService {
     @Async("taskExecutor")
     public void notifyOrderConfirmed(Long orderId) {
         try {
-            // mock notification - don't throw to avoid impacting core flow
             log.info("[notify] order confirmed: ORD-{}", orderId);
         } catch (Exception ex) {
             log.error("notification failed for order {}: {}", orderId, ex.getMessage());

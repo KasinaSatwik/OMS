@@ -36,7 +36,6 @@ public class OrderService {
         items.forEach(it -> it.setOrder(o));
         o.setItems(items);
         Order saved = orderRepository.save(o);
-        // publish async event
     List<ItemDto> evItems = items.stream()
         .map(it -> ItemDto.builder().productId(it.getProductId()).quantity(it.getQuantity()).build())
         .collect(Collectors.toList());

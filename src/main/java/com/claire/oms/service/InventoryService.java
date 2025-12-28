@@ -19,11 +19,11 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.claire.oms.utility.Constants;
 
-import jakarta.persistence.OptimisticLockException;
-import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.Objects;
 
 @Service
 public class InventoryService {
@@ -44,35 +44,33 @@ public class InventoryService {
 
     @Async("taskExecutor")
     @EventListener
-    @Retryable(value = {OptimisticLockException.class}, maxAttempts = 3, backoff = @Backoff(delay = 200))
+    @Retryable(maxAttempts = 3, backoff = @Backoff(delay = 200))
     @Transactional
     public void handleOrderCreated(OrderCreatedEvent ev) {
-        // idempotence: only process if order still CREATED
         Order order = orderRepository.findById(ev.getOrderId()).orElse(null);
         if (order == null) return;
         if (order.getStatus() != Order.Status.CREATED) return;
 
         try {
-            // attempt to reserve
             for (ItemDto it : ev.getItems()) {
                 Inventory inv = inventoryRepository.findById(it.getProductId()).orElse(null);
                 if (inv == null || inv.getAvailableQuantity() < it.getQuantity()) {
                     order.setStatus(Order.Status.FAILED);
                     orderRepository.save(order);
-                    dlq.save(createDlq(ev, com.claire.oms.utility.Constants.MSG_INSUFFICIENT_STOCK_FOR + it.getProductId()));
-                    publisher.publishEvent(OrderFailedEvent.builder().orderId(order.getId()).reason(com.claire.oms.utility.Constants.MSG_INSUFFICIENT_STOCK).build());
+                    dlq.save(Objects.requireNonNull(createDlq(ev, Constants.MSG_INSUFFICIENT_STOCK_FOR + it.getProductId())));
+                    publisher.publishEvent(OrderFailedEvent.builder().orderId(order.getId()).reason(Constants.MSG_INSUFFICIENT_STOCK).build());
                     return;
                 }
                 inv.setAvailableQuantity(inv.getAvailableQuantity() - it.getQuantity());
-                inventoryRepository.save(inv); // can throw OptimisticLockException
+                inventoryRepository.save(inv); 
             }
-            // all reserved
+            
             order.setStatus(Order.Status.CONFIRMED);
             orderRepository.save(order);
             publisher.publishEvent(OrderConfirmedEvent.builder().orderId(order.getId()).build());
         } catch (Exception ex) {
-            // persist to dead letter
-            dlq.save(createDlq(ev, ex.getMessage()));
+            
+            dlq.save(Objects.requireNonNull(createDlq(ev, ex.getMessage())));
             order.setStatus(Order.Status.FAILED);
             orderRepository.save(order);
             publisher.publishEvent(OrderFailedEvent.builder().orderId(order.getId()).reason(ex.getMessage()).build());
@@ -85,7 +83,6 @@ public class InventoryService {
     public void handleOrderCancelled(OrderCancelledEvent ev) {
         Order order = orderRepository.findById(ev.getOrderId()).orElse(null);
         if (order == null) return;
-        // release reserved quantities for items (best-effort)
         try {
             for (var it : order.getItems()) {
                 Inventory inv = inventoryRepository.findById(it.getProductId()).orElse(new Inventory(it.getProductId(), 0));
@@ -93,7 +90,7 @@ public class InventoryService {
                 inventoryRepository.save(inv);
             }
         } catch (Exception ex) {
-            dlq.save(createDlq(ev, ex.getMessage()));
+            dlq.save(Objects.requireNonNull(createDlq(ev, ex.getMessage())));
         }
     }
 
@@ -105,7 +102,6 @@ public class InventoryService {
         return d;
     }
 
-    // --- Inventory management APIs (used by controller) ---
     @Transactional
     public Inventory createOrSetInventory(String productId, int quantity) {
         Inventory inv = inventoryRepository.findById(productId).orElse(new Inventory(productId, 0));
@@ -120,7 +116,7 @@ public class InventoryService {
         Inventory inv = inventoryRepository.findById(productId).orElse(new Inventory(productId, 0));
         int newQty = inv.getAvailableQuantity() + delta;
         if (newQty < 0) {
-            throw new IllegalArgumentException(com.claire.oms.utility.Constants.EXC_RESULT_NEG);
+            throw new IllegalArgumentException(Constants.EXC_RESULT_NEG);
         }
         inv.setAvailableQuantity(newQty);
         Inventory saved = inventoryRepository.save(inv);
@@ -130,7 +126,7 @@ public class InventoryService {
 
     @Transactional
     public Inventory setInventoryQuantity(String productId, int quantity) {
-        if (quantity < 0) throw new IllegalArgumentException(com.claire.oms.utility.Constants.EXC_QUANTITY_NEG);
+        if (quantity < 0) throw new IllegalArgumentException(Constants.EXC_QUANTITY_NEG);
         return createOrSetInventory(productId, quantity);
     }
 }
